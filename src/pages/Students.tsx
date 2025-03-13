@@ -3,7 +3,7 @@ import { UserPlus } from 'lucide-react';
 import { getUsers } from '../lib/api';
 
 interface Student {
-  _id: string;
+  id: string;
   full_name: string;
   email: string;
 }
@@ -11,6 +11,7 @@ interface Student {
 function Students() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStudents();
@@ -18,13 +19,37 @@ function Students() {
 
   async function fetchStudents() {
     try {
+      setError(null);
       const data = await getUsers('student');
-      setStudents(data);
+      // Ensure we only store serializable data
+      const serializedStudents = data.map(student => ({
+        id: String(student.id),
+        full_name: String(student.full_name),
+        email: String(student.email)
+      }));
+      setStudents(serializedStudents);
     } catch (error) {
       console.error('Error fetching students:', error);
+      setError('Failed to load students');
     } finally {
       setLoading(false);
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
+        {error}
+      </div>
+    );
   }
 
   return (
@@ -46,48 +71,44 @@ function Students() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="text-center">Loading...</div>
-      ) : (
-        <div className="flex flex-col">
-          <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
-              <div className="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Email
-                      </th>
-                      <th scope="col" className="relative px-6 py-3">
-                        <span className="sr-only">Actions</span>
-                      </th>
+      <div className="flex flex-col">
+        <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+          <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+            <div className="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th scope="col" className="relative px-6 py-3">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {students.map((student) => (
+                    <tr key={student.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{student.full_name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{student.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button className="text-indigo-600 hover:text-indigo-900">View Details</button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {students.map((student) => (
-                      <tr key={student._id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{student.full_name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{student.email}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button className="text-indigo-600 hover:text-indigo-900">View Details</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

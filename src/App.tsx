@@ -1,23 +1,32 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { GraduationCap, Users, BookOpen, Home, LogOut, Calendar, Menu, X } from 'lucide-react';
+import { GraduationCap, Users, BookOpen, Home, LogOut, Calendar, Menu, X, Building2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { SchoolProvider, useSchool } from './contexts/SchoolContext';
 import PrivateRoute from './components/PrivateRoute';
 import Dashboard from './pages/Dashboard';
 import Courses from './pages/Courses';
 import Students from './pages/Students';
 import Grades from './pages/Grades';
 import Timetables from './pages/Timetables';
+import SchoolManagement from './pages/SchoolManagement';
 import Login from './pages/Login';
 
 function Navigation() {
   const { user, logout } = useAuth();
+  const { school } = useSchool();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   if (!user) return null;
 
-  const isAdmin = user.role === 'school_admin';
+  const isSystemAdmin = user.role === 'system_admin';
+  const isSchoolAdmin = user.role === 'school_admin';
   const isTeacher = user.role === 'teacher';
+
+  const logoStyle = {
+    backgroundColor: school?.primary_color || '#4F46E5',
+    color: '#ffffff',
+  };
 
   return (
     <nav className="bg-white shadow-lg">
@@ -25,8 +34,23 @@ function Navigation() {
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <GraduationCap className="h-8 w-8 text-indigo-600" />
-              <span className="ml-2 text-xl font-bold text-gray-800">EduManager</span>
+              {school?.logo_url ? (
+                <img 
+                  src={school.logo_url} 
+                  alt={school.name}
+                  className="h-8 w-auto"
+                />
+              ) : (
+                <div 
+                  className="h-8 w-8 rounded-full flex items-center justify-center"
+                  style={logoStyle}
+                >
+                  <GraduationCap className="h-5 w-5" />
+                </div>
+              )}
+              <span className="ml-2 text-xl font-bold text-gray-800">
+                {school?.name || 'EduManager'}
+              </span>
             </div>
             <div className="hidden md:ml-6 md:flex md:space-x-8">
               <Link
@@ -37,7 +61,17 @@ function Navigation() {
                 Dashboard
               </Link>
               
-              {(isAdmin || isTeacher) && (
+              {isSystemAdmin && (
+                <Link
+                  to="/schools"
+                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
+                >
+                  <Building2 className="h-4 w-4 mr-1" />
+                  Schools
+                </Link>
+              )}
+
+              {(isSchoolAdmin || isTeacher) && (
                 <Link
                   to="/courses"
                   className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
@@ -47,7 +81,7 @@ function Navigation() {
                 </Link>
               )}
 
-              {isAdmin && (
+              {isSchoolAdmin && (
                 <Link
                   to="/students"
                   className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
@@ -57,7 +91,7 @@ function Navigation() {
                 </Link>
               )}
 
-              {(isAdmin || isTeacher) && (
+              {(isSchoolAdmin || isTeacher) && (
                 <Link
                   to="/grades"
                   className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
@@ -67,13 +101,15 @@ function Navigation() {
                 </Link>
               )}
 
-              <Link
-                to="/timetables"
-                className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
-              >
-                <Calendar className="h-4 w-4 mr-1" />
-                Timetables
-              </Link>
+              {!isSystemAdmin && (
+                <Link
+                  to="/timetables"
+                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
+                >
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Timetables
+                </Link>
+              )}
             </div>
           </div>
           <div className="hidden md:flex md:items-center">
@@ -118,7 +154,20 @@ function Navigation() {
               </div>
             </Link>
 
-            {(isAdmin || isTeacher) && (
+            {isSystemAdmin && (
+              <Link
+                to="/schools"
+                className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <div className="flex items-center">
+                  <Building2 className="h-4 w-4 mr-2" />
+                  Schools
+                </div>
+              </Link>
+            )}
+
+            {(isSchoolAdmin || isTeacher) && (
               <Link
                 to="/courses"
                 className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
@@ -131,7 +180,7 @@ function Navigation() {
               </Link>
             )}
 
-            {isAdmin && (
+            {isSchoolAdmin && (
               <Link
                 to="/students"
                 className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
@@ -144,7 +193,7 @@ function Navigation() {
               </Link>
             )}
 
-            {(isAdmin || isTeacher) && (
+            {(isSchoolAdmin || isTeacher) && (
               <Link
                 to="/grades"
                 className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
@@ -157,16 +206,18 @@ function Navigation() {
               </Link>
             )}
 
-            <Link
-              to="/timetables"
-              className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <div className="flex items-center">
-                <Calendar className="h-4 w-4 mr-2" />
-                Timetables
-              </div>
-            </Link>
+            {!isSystemAdmin && (
+              <Link
+                to="/timetables"
+                className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <div className="flex items-center">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Timetables
+                </div>
+              </Link>
+            )}
           </div>
           <div className="pt-4 pb-3 border-t border-gray-200">
             <div className="flex items-center px-4">
@@ -206,62 +257,66 @@ function Navigation() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="min-h-screen bg-gray-50">
-          <Navigation />
-
-          <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              
-              <Route
-                path="/"
-                element={
-                  <PrivateRoute>
-                    <Dashboard />
-                  </PrivateRoute>
-                }
-              />
-              
-              <Route
-                path="/courses"
-                element={
-                  <PrivateRoute allowedRoles={['school_admin', 'teacher']}>
-                    <Courses />
-                  </PrivateRoute>
-                }
-              />
-              
-              <Route
-                path="/students"
-                element={
-                  <PrivateRoute allowedRoles={['school_admin']}>
-                    <Students />
-                  </PrivateRoute>
-                }
-              />
-              
-              <Route
-                path="/grades"
-                element={
-                  <PrivateRoute allowedRoles={['school_admin', 'teacher']}>
-                    <Grades />
-                  </PrivateRoute>
-                }
-              />
-
-              <Route
-                path="/timetables"
-                element={
-                  <PrivateRoute>
-                    <Timetables />
-                  </PrivateRoute>
-                }
-              />
-            </Routes>
-          </main>
-        </div>
-      </Router>
+      <SchoolProvider>
+        <Router>
+          <div className="min-h-screen bg-gray-50">
+            <Navigation />
+            <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route
+                  path="/"
+                  element={
+                    <PrivateRoute>
+                      <Dashboard />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/schools"
+                  element={
+                    <PrivateRoute allowedRoles={['system_admin']}>
+                      <SchoolManagement />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/courses"
+                  element={
+                    <PrivateRoute allowedRoles={['school_admin', 'teacher']}>
+                      <Courses />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/students"
+                  element={
+                    <PrivateRoute allowedRoles={['school_admin']}>
+                      <Students />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/grades"
+                  element={
+                    <PrivateRoute allowedRoles={['school_admin', 'teacher']}>
+                      <Grades />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/timetables"
+                  element={
+                    <PrivateRoute allowedRoles={['school_admin', 'teacher', 'student']}>
+                      <Timetables />
+                    </PrivateRoute>
+                  }
+                />
+              </Routes>
+            </main>
+          </div>
+        </Router>
+      </SchoolProvider>
     </AuthProvider>
   );
 }

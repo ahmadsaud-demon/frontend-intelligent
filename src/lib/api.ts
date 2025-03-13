@@ -1,5 +1,7 @@
 import axios from 'axios';
 import config from '../config';
+import { setupMockApi } from './mockApi';
+import type { User } from '../types/auth';
 
 const api = axios.create({
   baseURL: config.api.baseURL,
@@ -9,7 +11,11 @@ const api = axios.create({
   },
 });
 
-// Add auth token to requests if available
+// Set up mock API if enabled
+if (config.api.useMock) {
+  setupMockApi(api);
+}
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('auth_token');
   if (token) {
@@ -18,7 +24,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Add response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -29,6 +34,44 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Authentication
+export async function login(email: string, password: string): Promise<User> {
+  const { data } = await api.post('/auth/login', { email, password });
+  localStorage.setItem('auth_token', data.token);
+  return data.user;
+}
+
+export async function logout(): Promise<void> {
+  await api.post('/auth/logout');
+  localStorage.removeItem('auth_token');
+}
+
+export async function getCurrentUser(): Promise<User> {
+  const { data } = await api.get('/auth/me');
+  return data;
+}
+
+// Schools
+export async function getSchools() {
+  const { data } = await api.get('/schools');
+  return data;
+}
+
+export async function getSchoolByDomain(domain: string) {
+  const { data } = await api.get(`/schools/domain/${domain}`);
+  return data;
+}
+
+export async function createSchool(schoolData: { name: string; domain: string; logo_url?: string; primary_color?: string; secondary_color?: string }) {
+  const { data } = await api.post('/schools', schoolData);
+  return data;
+}
+
+export async function updateSchoolBranding(schoolId: string, brandingData: { logo_url?: string; primary_color?: string; secondary_color?: string }) {
+  const { data } = await api.put(`/schools/${schoolId}/branding`, brandingData);
+  return data;
+}
 
 // Users/Students
 export async function getUsers(role?: string) {
@@ -49,23 +92,6 @@ export async function updateUser(userId: string, userData: Partial<{ email: stri
 export async function deleteUser(userId: string) {
   await api.delete(`/users/${userId}`);
   return { success: true };
-}
-
-// Authentication
-export async function login(email: string, password: string) {
-  const { data } = await api.post('/auth/login', { email, password });
-  localStorage.setItem('auth_token', data.token);
-  return data.user;
-}
-
-export async function logout() {
-  await api.post('/auth/logout');
-  localStorage.removeItem('auth_token');
-}
-
-export async function getCurrentUser() {
-  const { data } = await api.get('/auth/me');
-  return data;
 }
 
 // Courses
@@ -169,6 +195,22 @@ export async function fetchQAHistory(materialId: string) {
 
 export async function askQuestion(materialId: string, question: string) {
   const { data } = await api.post(`/materials/${materialId}/qa`, { question });
+  return data;
+}
+
+// Analytics and Billing
+export async function getApiUsage(schoolId?: string) {
+  const { data } = await api.get('/api-usage', { params: { school_id: schoolId } });
+  return data;
+}
+
+export async function getBillingOverview(schoolId?: string) {
+  const { data } = await api.get('/billing', { params: { school_id: schoolId } });
+  return data;
+}
+
+export async function getSubscriptions(schoolId?: string) {
+  const { data } = await api.get('/subscriptions', { params: { school_id: schoolId } });
   return data;
 }
 
