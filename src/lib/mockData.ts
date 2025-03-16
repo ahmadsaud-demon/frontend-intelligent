@@ -292,3 +292,44 @@ export const mockQAHistory = {
     }
   ]
 };
+export const mockChatMessages = []; // Initialize with an empty array or your actual chat messages data
+
+export const mockChatRooms = {
+  '1001': {
+    id: '1001',
+    name: 'Springfield - Calculus',
+    messages: mockChatMessages
+  },
+  '2001': {
+    id: '2001',
+    name: 'Riverdale - Biology',
+    messages: mockChatMessages
+  }
+};
+
+export const mockGrades = {
+  '1001': [ // Springfield - Calculus Material
+    {
+      id: '10001',
+      question: 'Can you explain derivatives?',
+      answer: 'A derivative measures the rate of change of a function with respect to its variable. It tells us the slope of the tangent line at any point on the curve.',
+      created_at: '2025-03-01T15:00:00Z',
+      user: {
+        full_name: 'Jane Doe',
+        student_id: '1001'
+      }
+    }
+  ],
+  '2001': [ // Riverdale - Biology Material
+    {
+      id: '20001',
+      question: 'What are the main parts of a cell?',
+      answer: 'The main parts of a cell include:\n1. Cell membrane\n2. Nucleus\n3. Cytoplasm\n4. Mitochondria\n5. Endoplasmic reticulum',
+      created_at: '2025-03-02T10:30:00Z',
+      user: {
+        full_name: 'Bob Wilson',
+        student_id: '2001'
+      }
+    }
+  ]
+};

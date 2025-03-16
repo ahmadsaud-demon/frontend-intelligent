@@ -32,13 +32,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const token = localStorage.getItem('auth_token');
       if (token) {
         const response = await getCurrentUser();
-        const user: User = {
-          id: response.id,
-          email: response.email,
-          full_name: response.full_name,
-          role: response.role
-        };
-        setState({ user, loading: false });
+        if (response) { // Add this null check
+          const user: User = {
+            id: response.id,
+            email: response.email,
+            full_name: response.full_name,
+            role: response.role
+          };
+          setState({ user, loading: false });
+        } else {
+          console.error('Error checking auth status: getCurrentUser returned null');
+          setState({ user: null, loading: false });
+        }
       } else {
         setState({ user: null, loading: false });
       }

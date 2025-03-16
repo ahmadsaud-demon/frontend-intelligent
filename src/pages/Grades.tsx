@@ -26,6 +26,7 @@ function Grades() {
   async function fetchGrades() {
     try {
       const data = await getGrades('all');
+      console.log(data);
       setGrades(data);
     } catch (error) {
       console.error('Error fetching grades:', error);

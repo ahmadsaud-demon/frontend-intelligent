@@ -83,8 +83,8 @@ function SystemAdminDashboard() {
       try {
         setError(null);
         const [apiData, subsData] = await Promise.all([
-          getApiUsage(),
-          getSubscriptions()
+          getApiUsage(school.id),
+          getSubscriptions(school.id)
         ]);
 
         // Ensure we only store serializable data

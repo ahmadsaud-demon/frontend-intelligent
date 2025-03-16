@@ -17,8 +17,9 @@ export function setupMockApi(axiosInstance: any) {
   // Auth endpoints
   mock.onPost('/auth/login').reply((config) => {
     const { email, password } = JSON.parse(config.data);
-    const user = mockUsers.find(u => u.email === email);
-
+    const user = Object.values(mockUsers).flat().find(u => u.email === email);
+    console.log('user:::' + JSON.stringify(user));
+    console.log('password:::' + password);
     if (user && password === 'password123') {
       return [200, {
         token: 'mock-jwt-token',
@@ -41,10 +42,14 @@ export function setupMockApi(axiosInstance: any) {
   // Users/Students
   mock.onGet('/users').reply((config) => {
     const role = config.params?.role;
-    if (role) {
-      return [200, mockUsers.filter(u => u.role === role)];
-    }
-    return [200, mockUsers];
+      const schoolId = config.params?.school_id;
+      if (schoolId && mockUsers[schoolId]) {
+        if (role) {
+          return [200, mockUsers[schoolId].filter(u => u.role === role)];
+        }
+        return [200, mockUsers[schoolId]];
+      }
+      return [200, []];
   });
 
   // Courses
@@ -152,6 +157,21 @@ export function setupMockApi(axiosInstance: any) {
       }];
     }
     return [200, mockBilling];
+  });
+
+  mock.onGet('/grades').reply((config) => {
+    const type = config.params?.type;
+      if (type === 'all') {
+        return [200, Object.values(mockGrades).flat()];
+      } else if (type === 'student') {
+        // return grades for a specific student
+        return [200, mockGrades['1001']];
+      } else if (type === 'teacher') {
+        // return grades for a specific teacher
+        return [200, mockGrades['2001']];
+      } else {
+        return [400, { message: 'Invalid type parameter' }];
+      }
   });
 
   return mock;
