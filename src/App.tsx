@@ -1,324 +1,173 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { GraduationCap, Users, BookOpen, Home, LogOut, Calendar, Menu, X, Building2 } from 'lucide-react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { SchoolProvider, useSchool } from './contexts/SchoolContext';
-import PrivateRoute from './components/PrivateRoute';
-import Dashboard from './pages/Dashboard';
-import Courses from './pages/Courses';
-import Students from './pages/Students';
-import Grades from './pages/Grades';
-import Timetables from './pages/Timetables';
-import SchoolManagement from './pages/SchoolManagement';
-import Login from './pages/Login';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, Users, GraduationCap, Award, Building2, Activity, CreditCard, BarChart2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useSchool } from '../contexts/SchoolContext';
+import { getApiUsage, getBillingOverview, getSubscriptions } from '../lib/api';
 
-function Navigation() {
-  const { user, logout } = useAuth();
+interface StatCardProps {
+  title: string;
+  value: string;
+  icon: React.ElementType;
+  color: string;
+  subtext?: string;
+}
+
+interface ApiUsageData {
+  daily: Array<{
+    date: string;
+    calls: number;
+  }>;
+  endpoints: Array<{
+    path: string;
+    calls: number;
+    avgResponseTime: number;
+  }>;
+}
+
+interface BillingData {
+  currentPlan: string;
+  nextBillingDate: string;
+  subscriptionEndDate: string;
+  apiUsage: number;
+  apiLimit: number;
+  recentInvoices: Array<{
+    id: string;
+    amount: number;
+    status: string;
+    date: string;
+  }>;
+}
+
+interface SubscriptionData {
+  id: string;
+  school_id: string;
+  plan_name: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+  max_users: number;
+  max_api_calls: number;
+}
+
+function Dashboard() {
+  const { user } = useAuth();
   const { school } = useSchool();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [apiUsage, setApiUsage] = useState<ApiUsageData | null>(null);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionData[] | null>(null);
 
-  if (!user) return null;
-
-  const isSystemAdmin = user.role === 'system_admin';
-  const isSchoolAdmin = user.role === 'school_admin';
-  const isTeacher = user.role === 'teacher';
-
-  const logoStyle = {
-    backgroundColor: school?.primary_color || '#4F46E5',
-    color: '#ffffff',
-  };
-
-  return (
-    <nav className="bg-white shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              {school?.logo_url ? (
-                <img 
-                  src={school.logo_url} 
-                  alt={school.name}
-                  className="h-8 w-auto"
-                />
-              ) : (
-                <div 
-                  className="h-8 w-8 rounded-full flex items-center justify-center"
-                  style={logoStyle}
-                >
-                  <GraduationCap className="h-5 w-5" />
-                </div>
-              )}
-              <span className="ml-2 text-xl font-bold text-gray-800">
-                {school?.name || 'EduManager'}
-              </span>
+  function StatCard({ title, value, icon: Icon, color, subtext }: StatCardProps) {
+    return (
+      <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div className="p-5">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <Icon className={`h-6 w-6 ${color}`} />
             </div>
-            <div className="hidden md:ml-6 md:flex md:space-x-8">
-              <Link
-                to="/"
-                className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900"
-              >
-                <Home className="h-4 w-4 mr-1" />
-                Dashboard
-              </Link>
-              
-              {isSystemAdmin && (
-                <Link
-                  to="/schools"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
-                >
-                  <Building2 className="h-4 w-4 mr-1" />
-                  Schools
-                </Link>
-              )}
-
-              {(isSchoolAdmin || isTeacher) && (
-                <Link
-                  to="/courses"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
-                >
-                  <BookOpen className="h-4 w-4 mr-1" />
-                  Courses
-                </Link>
-              )}
-
-              {isSchoolAdmin && (
-                <Link
-                  to="/students"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
-                >
-                  <Users className="h-4 w-4 mr-1" />
-                  Students
-                </Link>
-              )}
-
-              {(isSchoolAdmin || isTeacher) && (
-                <Link
-                  to="/grades"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
-                >
-                  <GraduationCap className="h-4 w-4 mr-1" />
-                  Grades
-                </Link>
-              )}
-
-              {!isSystemAdmin && (
-                <Link
-                  to="/timetables"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-500 hover:text-gray-900"
-                >
-                  <Calendar className="h-4 w-4 mr-1" />
-                  Timetables
-                </Link>
-              )}
+            <div className="ml-5 w-0 flex-1">
+              <dl>
+                <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
+                <dd className="text-lg font-medium text-gray-900">{value}</dd>
+                {subtext && (
+                  <dd className="text-sm text-gray-500">{subtext}</dd>
+                )}
+              </dl>
             </div>
-          </div>
-          <div className="hidden md:flex md:items-center">
-            <span className="text-sm text-gray-500 mr-4">
-              {user.full_name} ({user.role})
-            </span>
-            <button
-              onClick={() => logout()}
-              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-            >
-              <LogOut className="h-4 w-4 mr-1" />
-              Logout
-            </button>
-          </div>
-          <div className="flex items-center md:hidden">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
-            >
-              {isMenuOpen ? (
-                <X className="h-6 w-6" />
-              ) : (
-                <Menu className="h-6 w-6" />
-              )}
-            </button>
           </div>
         </div>
       </div>
+    );
+  }
 
-      {/* Mobile menu */}
-      {isMenuOpen && (
-        <div className="md:hidden">
-          <div className="pt-2 pb-3 space-y-1">
-            <Link
-              to="/"
-              className="block pl-3 pr-4 py-2 border-l-4 border-indigo-500 text-base font-medium text-indigo-700 bg-indigo-50"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <div className="flex items-center">
-                <Home className="h-4 w-4 mr-2" />
-                Dashboard
-              </div>
-            </Link>
+  async function loadData() {
+    try {
+      setError(null);
+      const [apiData, subsData] = await Promise.all([
+        getApiUsage(school.id),
+        getSubscriptions(school.id)
+      ]);
 
-            {isSystemAdmin && (
-              <Link
-                to="/schools"
-                className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <div className="flex items-center">
-                  <Building2 className="h-4 w-4 mr-2" />
-                  Schools
-                </div>
-              </Link>
-            )}
+      // Ensure we only store serializable data
+      setApiUsage({
+        daily: apiData.daily.map(d => ({
+          date: String(d.date),
+          calls: Number(d.calls)
+        })),
+        endpoints: apiData.endpoints.map(e => ({
+          path: String(e.path),
+          calls: Number(e.calls),
+          avgResponseTime: Number(e.avgResponseTime)
+        }))
+      });
 
-            {(isSchoolAdmin || isTeacher) && (
-              <Link
-                to="/courses"
-                className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <div className="flex items-center">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Courses
-                </div>
-              </Link>
-            )}
+      setSubscriptions(subsData.map(s => ({
+        id: String(s.id),
+        school_id: String(s.school_id),
+        plan_name: String(s.plan_name),
+        status: String(s.status),
+        start_date: String(s.start_date),
+        end_date: String(s.end_date),
+        max_users: Number(s.max_users),
+        max_api_calls: Number(s.max_api_calls)
+      })));
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      setError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  }
 
-            {isSchoolAdmin && (
-              <Link
-                to="/students"
-                className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 mr-2" />
-                  Students
-                </div>
-              </Link>
-            )}
+  useEffect(() => {
+    loadData();
+  }, []);
 
-            {(isSchoolAdmin || isTeacher) && (
-              <Link
-                to="/grades"
-                className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <div className="flex items-center">
-                  <GraduationCap className="h-4 w-4 mr-2" />
-                  Grades
-                </div>
-              </Link>
-            )}
-
-            {!isSystemAdmin && (
-              <Link
-                to="/timetables"
-                className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <div className="flex items-center">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Timetables
-                </div>
-              </Link>
-            )}
-          </div>
-          <div className="pt-4 pb-3 border-t border-gray-200">
-            <div className="flex items-center px-4">
-              <div className="flex-shrink-0">
-                <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                  <span className="text-indigo-700 font-medium">
-                    {user.full_name[0]}
-                  </span>
-                </div>
-              </div>
-              <div className="ml-3">
-                <div className="text-base font-medium text-gray-800">{user.full_name}</div>
-                <div className="text-sm font-medium text-gray-500">{user.role}</div>
-              </div>
-            </div>
-            <div className="mt-3 space-y-1">
-              <button
-                onClick={() => {
-                  logout();
-                  setIsMenuOpen(false);
-                }}
-                className="block w-full text-left px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-              >
-                <div className="flex items-center">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </nav>
-  );
-}
-
-function App() {
   return (
-    <AuthProvider>
-      <SchoolProvider>
-        <Router>
-          <div className="min-h-screen bg-gray-50">
-            <Navigation />
-            <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route
-                  path="/"
-                  element={
-                    <PrivateRoute>
-                      <Dashboard />
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/schools"
-                  element={
-                    <PrivateRoute allowedRoles={['system_admin']}>
-                      <SchoolManagement />
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/courses"
-                  element={
-                    <PrivateRoute allowedRoles={['school_admin', 'teacher']}>
-                      <Courses />
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/students"
-                  element={
-                    <PrivateRoute allowedRoles={['school_admin']}>
-                      <Students />
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/grades"
-                  element={
-                    <PrivateRoute allowedRoles={['school_admin', 'teacher']}>
-                      <Grades />
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path="/timetables"
-                  element={
-                    <PrivateRoute allowedRoles={['school_admin', 'teacher', 'student']}>
-                      <Timetables />
-                    </PrivateRoute>
-                  }
-                />
-              </Routes>
-            </main>
-          </div>
-        </Router>
-      </SchoolProvider>
-    </AuthProvider>
+    <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <h2 className="text-lg leading-6 font-medium text-gray-900">Dashboard</h2>
+      <div className="mt-2 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          title="API Usage"
+          value={apiUsage?.daily[0].calls.toString() ?? '0'}
+          icon={Activity}
+          color="text-blue-500"
+          subtext="Total API calls today"
+        />
+        <StatCard
+          title="Subscriptions"
+          value={subscriptions?.length.toString() ?? '0'}
+          icon={CreditCard}
+          color="text-green-500"
+          subtext="Total subscriptions"
+        />
+        <StatCard
+          title="Users"
+          value={user?.name ?? '0'}
+          icon={Users}
+          color="text-purple-500"
+          subtext="Total users"
+        />
+        <StatCard
+          title="Schools"
+          value={school?.name ?? '0'}
+          icon={Building2}
+          color="text-orange-500"
+          subtext="Total schools"
+        />
+        <StatCard
+          title="Grades"
+          value="A"
+          icon={GraduationCap}
+          color="text-yellow-500"
+          subtext="Average grade"
+        />
+      </div>
+      {error && (
+        <div className="mt-4 text-red-500">{error}</div>
+      )}
+    </div>
   );
 }
 
-export default App;
+export default Dashboard;
